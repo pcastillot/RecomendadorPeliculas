@@ -2,6 +2,7 @@ from main_ui import *
 import dbManager
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
+    peliculas = dict
     def __init__(self, *args, **kwargs):
         #Inicializacion de la ventana y listeners
         QtWidgets.QMainWindow.__init__(self, *args, **kwargs)
@@ -18,7 +19,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # Recomendar y cargar la tabla de ranking
     def recomendarRanking(self, usuario):
-        dbManager
         return 0
 
     # Predecir la puntuación que el usuario le daría a x película
@@ -26,10 +26,17 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         return 0
 
     def cargarPeliculas(self):
-        return 0
+        peliculas = dbManager.getPeliculas()
+        for pelicula in peliculas:
+            self.peliculas.update({pelicula[0]: pelicula[1]})
+            self.cbPeliculas.addItem(pelicula[1])
+
 
     def cargarUsuarios(self):
-        return 0
+        usuarios = dbManager.getUsuarios()
+        for usuario in usuarios:
+            self.cbUsuariosRanking.addItem(usuario[0])
+            self.cbUsuariosPelicula.addItem(usuario[0])
 
 
 
