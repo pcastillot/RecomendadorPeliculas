@@ -17,6 +17,12 @@ def getPeliculas():
     peliculas = cursor.fetchall()
     return peliculas
 
+def getRatings():
+    query = '''SELECT ratings.userId, ratings.movieId, movies.title, ratings.rating FROM ratings 
+                JOIN movies ON ratings.movieId = movies.movieId'''
+    cursor.execute(query)
+    ratings_prediccion = cursor.fetchall()
+    return ratings_prediccion
 
 def getRatingsUsuario(usuario):
     query = '''SELECT ratings.movieId, movies.title, ratings.rating FROM ratings 

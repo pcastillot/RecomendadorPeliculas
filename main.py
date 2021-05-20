@@ -32,6 +32,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.tbRanking.setItem(row, 1, QtWidgets.QTableWidgetItem(rating[1]))
             self.tbRanking.setItem(row, 2, QtWidgets.QTableWidgetItem(rating[2]))
             row += 1
+        self.predecir()
 
     # Predecir la puntuación que el usuario le daría a x película
     def recomendarPelicula(self, usuario, pelicula):
@@ -44,7 +45,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.cbPeliculas.addItem(pelicula[1])
 
     def cosenoAjustado(self): #puede cambiar
-        #datos ejemplo
+        #datos ejemplo (en su lugar importar los datos del archivo db)
         usuarios = [[1,2,3],[4,5,3],[1,5,4],[3,4,4],[5,5,1]]
 
         #variables para usar
@@ -63,6 +64,53 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         #devuelve el coeficiente de similitud
         print(coseno_ajustado)
+
+    def predecir(self):
+        #Declaración de variables a usar
+        usuarios_similares = []
+        lista_vistas = []
+        aux_vistas = []
+        vista = False
+        
+        #Carga del usuario y pelicula seleccionadas
+        usuario = 1#cargar usuario seleccionado en el combobox
+        pelicula = "Jumanji (1995)"#cargar pelicula seleccionada en el combobox
+
+        #Carga de todos los usuarios
+        usuarios = dbManager.getUsuarios()
+        string_aux = str(usuarios[0]).replace("(","").replace(")","").replace(",","").replace("'","")
+        #Carga de todas la valoraciones y las realizadas por el usuario
+        ratings = dbManager.getRatings()
+        ratings_user = dbManager.getRatingsUsuario(usuario)
+        #print(ratings_user)
+        for i in ratings_user:
+            if str(pelicula) == i[1]:
+                vista = True
+            lista_vistas.append(i[1])
+        lista_vistas.append(pelicula) #guardamos todas las películas que ha visto el usuario 
+        if vista == False:  #Si el usuario no ha visto la película elegida, se guardan los usuarios que han visto 
+                            #las que nuestro usuario ya ha visto además de la seleccionada
+            for user in usuarios:
+                #Se limpia el string para su posterior uso
+                string_aux = str(user).replace("(","").replace(")","").replace(",","").replace("'","")
+                aux_vistas.clear()
+                
+                #Cargamos las valoraciones del usuario indicado en una lista auxiliar
+                ratings_aux = dbManager.getRatingsUsuario(string_aux)
+                for rating_aux in ratings_aux:
+                    aux_vistas.append(rating_aux[1])
+                #Si la lista auxiliar contiene la película elegida, imprime los usuarios que han valorado
+                #esa película.
+                if (pelicula in aux_vistas):
+                    usuarios_similares.append(string_aux)
+            print(usuarios_similares)
+            prediccion = "e"
+        else:
+            prediccion = "Película ya vista, seleccione otra"
+        print(prediccion)
+
+
+        #return prediccion
 
     def cargarUsuarios(self):
         usuarios = dbManager.getUsuarios()
