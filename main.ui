@@ -133,17 +133,6 @@
     </property>
     <column>
      <property name="text">
-      <string>Id. Item</string>
-     </property>
-     <property name="font">
-      <font>
-       <weight>50</weight>
-       <bold>false</bold>
-      </font>
-     </property>
-    </column>
-    <column>
-     <property name="text">
       <string>Titulo</string>
      </property>
     </column>
@@ -210,7 +199,7 @@
      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
     </property>
    </widget>
-   <widget class="QLabel" name="label_4">
+   <widget class="QLabel" name="lblRanking">
     <property name="geometry">
      <rect>
       <x>220</x>
@@ -254,6 +243,9 @@
      <font>
       <pointsize>11</pointsize>
      </font>
+    </property>
+    <property name="text">
+     <string>10</string>
     </property>
     <property name="maxLength">
      <number>2</number>

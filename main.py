@@ -5,6 +5,10 @@ import pandas
 from main_ui import *
 import dbManager
 
+
+
+
+
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     peliculas = dict
     dataframe = pandas.DataFrame
@@ -21,13 +25,43 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
 
         #Signals
-        self.btnRecomendarTabla.clicked.connect(lambda: self.mostrarRatings(self.cbUsuariosRanking.currentText()))
+        self.btnRecomendarTabla.clicked.connect(lambda: self.recomendarRanking(self.cbUsuariosRanking.currentText()))
         self.btnRecomendarPelicula.clicked.connect(lambda: self.recomendarPelicula(self.cbUsuariosRanking.currentText()
                                                                                    , self.cbPeliculas.currentText()))
 
+    def getPeliculasNoVistas(self, usuario):
+        peliculasNoVistas = self.dataframe.columns[self.dataframe.iloc[(int(usuario)-1)].isna()].tolist()
+        print("Peliculas no vistas por el usuario " + usuario)
+        print(peliculasNoVistas)
+
+        return peliculasNoVistas
+
+
+
+
     # Recomendar y cargar la tabla de ranking
     def recomendarRanking(self, usuario):
-        return 0
+        umbral = float(self.txtUmbral.text())
+        nItems = int(self.txtItemsRanking.text())
+        peliculasNoVistas = self.getPeliculasNoVistas(usuario)
+        self.lblRanking.setText("Ranking usuario: " + str(usuario))
+        self.tbRanking.setRowCount(nItems)
+        row = 0
+        for pelicula in peliculasNoVistas:
+            prediccion = self.getPrediccion(pelicula, usuario, umbral)
+            if prediccion == "None":
+                print("No se ha podido obtener una prediccion para la pelicula: " + pelicula)
+            else:
+                self.tbRanking.setItem(row, 0, QtWidgets.QTableWidgetItem(pelicula))
+                self.tbRanking.setItem(row, 1, QtWidgets.QTableWidgetItem(str(prediccion)))
+                row += 1
+
+            if row == nItems:
+                break
+
+        self.tbRanking.sortByColumn(1, QtCore.Qt.DescendingOrder)
+
+        print("Finalizado")
 
     # Funcion de prueba para probar la carga de datos en la tabla
     def mostrarRatings(self, usuario):
@@ -39,16 +73,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.tbRanking.setItem(row, 1, QtWidgets.QTableWidgetItem(rating[1]))
             self.tbRanking.setItem(row, 2, QtWidgets.QTableWidgetItem(rating[2]))
             row += 1
-
-        #Pruebas
-
-        #self.predecir()
-        usuarios = [[1,2],[4,5],[1,5],[3,4],[5,5]]
-        #self.cosenoAjustado(usuarios)
-        #self.media_usuario(1)
-        ratings = dbManager.getRatings()
-        matriz_ajustada = self.ajustarDatos(ratings)
-        #print(matriz_ajustada[0])
         
 
 
@@ -63,52 +87,61 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if str(self.dataframe.at[(int(usuario)-1), pelicula]) != "nan":
             self.lblPrediccion.setText("Esta película ya ha sido puntuada")
 
-        # Si no Caluclamos la prediccion
+        # Si no calculamos la prediccion
         else:
             print("Calculando prediccion")
 
-            # Obtenemos el dataframe completo para realizar los calculos
-            dataframe = self.getDataFrameNoNan(pelicula, usuario)
-
-            # Obtenemos todas las valoraciones ajustadas de la pelicula a predecir
-            dfPeliculaPrediccion = dataframe[pelicula]
-            valuesPeliculaPrediccion = []
-            for value in dfPeliculaPrediccion:
-                valuesPeliculaPrediccion.append(value)
-
-            # Preparamos las variables con las que obtendremos la prediccion
-            numerador = 0.0
-            denominador = 0.0
-
-            # Por cada pelicula en el dataframe
-            for column in dataframe.columns:
-                # Si es distinta a la que intentamos predecir
-                if column != pelicula:
-                    # Obtenemos todas las valoraciones ajustadas
-                    values = dataframe[column]
-                    valuesArray = []
-                    for value in values:
-                        valuesArray.append(value)
-
-                    print(valuesArray)
-
-                    # Calculamos la similitud de las valoraciones de las peliculas en la que nos encontramos y la
-                    # pelicula a predecir
-                    similitud = self.formulaCoseno(valuesPeliculaPrediccion, valuesArray)
-
-                    # Si la similitud está por encima del umbral calculamos los valores necesarios para la prediccion
-                    if similitud >= umbral:
-                        valoracion = float(dbManager.getRankUsuarioPelicula(usuario, column)[0][0])
-                        print("Calculo:\n   numerador += " + str(similitud) + " * " + str(valoracion))
-                        numerador += similitud * valoracion
-                        denominador += similitud
-
             # Obtenemos la prediccion
-            prediccion = format((numerador/denominador), ".2f")
+            prediccion = self.getPrediccion(pelicula, usuario, umbral)
 
             # La imprimimos en la etiqueta de la interfaz
             self.lblPrediccion.setText(str(prediccion))
 
+
+    def getPrediccion(self, pelicula, usuario, umbral):
+        # Obtenemos el dataframe completo para realizar los calculos
+        dataframe = self.getDataFrameNoNan(pelicula, usuario)
+
+        # Obtenemos todas las valoraciones ajustadas de la pelicula a predecir
+        dfPeliculaPrediccion = dataframe[pelicula]
+        valuesPeliculaPrediccion = []
+        for value in dfPeliculaPrediccion:
+            valuesPeliculaPrediccion.append(value)
+
+        # Preparamos las variables con las que obtendremos la prediccion
+        numerador = 0.0
+        denominador = 0.0
+
+        # Por cada pelicula en el dataframe
+        for column in dataframe.columns:
+            # Si es distinta a la que intentamos predecir
+            if column != pelicula:
+                # Obtenemos todas las valoraciones ajustadas
+                values = dataframe[column]
+                valuesArray = []
+                for value in values:
+                    valuesArray.append(value)
+
+                # Calculamos la similitud de las valoraciones de las peliculas en la que nos encontramos y la
+                # pelicula a predecir
+                similitud = self.formulaCoseno(valuesPeliculaPrediccion, valuesArray)
+
+                # Si la similitud está por encima del umbral calculamos los valores necesarios para la prediccion
+                if similitud >= umbral:
+                    valoracion = float(dbManager.getRankUsuarioPelicula(usuario, column)[0][0])
+                    print("Calculo:\n   numerador += " + str(similitud) + " * " + str(valoracion))
+                    numerador += similitud * valoracion
+                    denominador += similitud
+
+        # En caso de no haber ningun error
+        if denominador != 0 and (numerador / denominador) <= 5:
+            # Obtenemos la prediccion
+            prediccion = format((numerador / denominador), ".2f")
+
+        else:
+            prediccion = "None"
+
+        return prediccion
 
     def getDataFrameNoNan(self, pelicula, usuario):
         # Eliminamos las filas de usuarios que no han valorado la pelicula a predecir
@@ -123,7 +156,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # Filtramos el dataframe dejando solo las columnas con las peliculas valoradas por le usuario y eliminamos
         # las filas que no tengan muchas de las peliculas valoradas por el usuario
         dataframeFinal = dataframe[peliculasValoradas]
-        dataframeFinal = dataframeFinal.dropna(thresh=50)
+        dataframeFinal = dataframeFinal.dropna(thresh=int(len(dataframeFinal)*0.8))
 
         print(dataframeFinal)
 
@@ -164,8 +197,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             denominador_1 += (peliculaReferencia[i])**2
             denominador_2 += (peliculaPredecir[i])**2
 
-        #aplica la fórmula del coseno ajustado utilizando los sumatorios previamente calculados.
-        coseno_ajustado = numerador/((denominador_1**(1/2))*(denominador_2**(1/2)))
+        denominador = (denominador_1**(1/2))*(denominador_2**(1/2))
+
+        if denominador != 0:
+            #aplica la fórmula del coseno ajustado utilizando los sumatorios previamente calculados.
+            coseno_ajustado = numerador/((denominador_1**(1/2))*(denominador_2**(1/2)))
+
+        # En caso de error en el calculo devolvemos un valor fuera del rango para no entrar en su calculo
+        else:
+            coseno_ajustado = -2
 
         #devuelve el coeficiente de similitud
         print(coseno_ajustado)
