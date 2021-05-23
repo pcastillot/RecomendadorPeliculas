@@ -11,9 +11,9 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(504, 800)
-        MainWindow.setMinimumSize(QtCore.QSize(504, 623))
-        MainWindow.setMaximumSize(QtCore.QSize(504, 800))
+        MainWindow.resize(504, 739)
+        MainWindow.setMinimumSize(QtCore.QSize(504, 739))
+        MainWindow.setMaximumSize(QtCore.QSize(504, 739))
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.txtUmbral = QtWidgets.QLineEdit(self.centralwidget)
@@ -28,7 +28,7 @@ class Ui_MainWindow(object):
         self.cbUsuariosRanking.setEditable(False)
         self.cbUsuariosRanking.setObjectName("cbUsuariosRanking")
         self.lblPrediccion = QtWidgets.QLabel(self.centralwidget)
-        self.lblPrediccion.setGeometry(QtCore.QRect(240, 640, 101, 21))
+        self.lblPrediccion.setGeometry(QtCore.QRect(240, 640, 251, 21))
         font = QtGui.QFont()
         font.setPointSize(12)
         self.lblPrediccion.setFont(font)
@@ -129,6 +129,7 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
+        self.txtUmbral.setText(_translate("MainWindow", "-1"))
         self.btnRecomendarPelicula.setText(_translate("MainWindow", "Predecir"))
         self.label_3.setText(_translate("MainWindow", "Umbral de similitud"))
         item = self.tbRanking.horizontalHeaderItem(0)

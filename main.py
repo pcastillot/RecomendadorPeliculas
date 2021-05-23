@@ -1,5 +1,5 @@
 import pickle
-
+import numpy
 import pandas
 
 from main_ui import *
@@ -18,8 +18,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.cargarUsuarios()
         self.cargarPeliculas()
         self.dataframe = pickle.load(open("dataframe.p", "rb"))
-
-        print(self.dataframe)
 
 
         #Signals
@@ -56,7 +54,95 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     # Predecir la puntuación que el usuario le daría a x película
     def recomendarPelicula(self, usuario, pelicula):
-        return 0
+        print("Prediciendo puntuación del usuario " + usuario + " en la pelicula: " + pelicula)
+
+        # Obtenemos el umbral establecido por el usuario
+        umbral = float(self.txtUmbral.text())
+
+        # Si la pelicula ha sido puntuada avisamos al usuario
+        if str(self.dataframe.at[(int(usuario)-1), pelicula]) != "nan":
+            self.lblPrediccion.setText("Esta película ya ha sido puntuada")
+
+        # Si no Caluclamos la prediccion
+        else:
+            print("Calculando prediccion")
+
+            # Obtenemos el dataframe completo para realizar los calculos
+            dataframe = self.getDataFrameNoNan(pelicula, usuario)
+
+            # Obtenemos todas las valoraciones ajustadas de la pelicula a predecir
+            dfPeliculaPrediccion = dataframe[pelicula]
+            valuesPeliculaPrediccion = []
+            for value in dfPeliculaPrediccion:
+                valuesPeliculaPrediccion.append(value)
+
+            # Preparamos las variables con las que obtendremos la prediccion
+            numerador = 0.0
+            denominador = 0.0
+
+            # Por cada pelicula en el dataframe
+            for column in dataframe.columns:
+                # Si es distinta a la que intentamos predecir
+                if column != pelicula:
+                    # Obtenemos todas las valoraciones ajustadas
+                    values = dataframe[column]
+                    valuesArray = []
+                    for value in values:
+                        valuesArray.append(value)
+
+                    print(valuesArray)
+
+                    # Calculamos la similitud de las valoraciones de las peliculas en la que nos encontramos y la
+                    # pelicula a predecir
+                    similitud = self.formulaCoseno(valuesPeliculaPrediccion, valuesArray)
+
+                    # Si la similitud está por encima del umbral calculamos los valores necesarios para la prediccion
+                    if similitud >= umbral:
+                        valoracion = float(dbManager.getRankUsuarioPelicula(usuario, column)[0][0])
+                        print("Calculo:\n   numerador += " + str(similitud) + " * " + str(valoracion))
+                        numerador += similitud * valoracion
+                        denominador += similitud
+
+            # Obtenemos la prediccion
+            prediccion = format((numerador/denominador), ".2f")
+
+            # La imprimimos en la etiqueta de la interfaz
+            self.lblPrediccion.setText(str(prediccion))
+
+
+    def getDataFrameNoNan(self, pelicula, usuario):
+        # Eliminamos las filas de usuarios que no han valorado la pelicula a predecir
+        dataframe = self.dataframe[self.dataframe[pelicula].notnull()]
+
+        # Obtenemos las peliculas valoradas por el usuario seleccionado y añadimos la pelicula a predecir
+        peliculasValoradas = self.getPeliculasValoradasUsuario(usuario)
+        peliculasValoradas.append(pelicula)
+
+        print(peliculasValoradas)
+
+        # Filtramos el dataframe dejando solo las columnas con las peliculas valoradas por le usuario y eliminamos
+        # las filas que no tengan muchas de las peliculas valoradas por el usuario
+        dataframeFinal = dataframe[peliculasValoradas]
+        dataframeFinal = dataframeFinal.dropna(thresh=50)
+
+        print(dataframeFinal)
+
+        # Por ultimo eliminamos las columnas que no tengan valoraciones para obtener una dataframe completo sin espacios
+        dataframeFinal = dataframeFinal.dropna(axis=1)
+
+        print(dataframeFinal)
+
+        return dataframeFinal
+
+    def getPeliculasValoradasUsuario(self, usuario):
+        listaPeliculas = dbManager.getRatingsUsuario(usuario)
+        peliculas = []
+        for pelicula in listaPeliculas:
+            peliculas.append(pelicula[1])
+
+        print(peliculas)
+
+        return peliculas
 
     def cargarPeliculas(self):
         peliculas = dbManager.getPeliculas()
@@ -64,45 +150,19 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.peliculas.update({pelicula[0]: pelicula[1]})
             self.cbPeliculas.addItem(pelicula[1])
 
-    #Función que ajusta las valoraciones de todos los usuarios en función de su media para aplicar la fórmula del coseno
-    def ajustarDatos(self, List):
-        matriz = List
-        usuarios = dbManager.getUsuarios()
-        #Cargamos los usuarios y vamos uno a uno
-        for user in usuarios:
-            #Limpiamos el campo para poder usar el valor del ID de cada usuario
-            string_aux = str(user[0]).replace("(","").replace(")","").replace(",","").replace("'","")
-            #Se llama a la función de calcular media para obtener la media del usuario
-            media = float(self.media_usuario(string_aux))
-            i = 0
-            #Vamos recorriendo la matriz de valoraciones fila a fila
-            for fila in matriz:
-                #Comprobamos cada fila para ver si el usuario de esa fila y el usuario que estamos comprobando son
-                #el mismo.
-                if (int(str(fila[0]).replace("'",""))==(int(string_aux))):
-                    #En caso de ser el mismo, ajustamos el dato de valoración restando su valoración media
-                    aux = float(str(fila[3]).replace("'",""))
-                    aux2 = format((aux - media), ".3f")
-                    #Una vez calculado el nuevo valor lo insertamos de nuevo en la matriz
-                    fila_aux = (fila[0], fila[1], fila[2], aux2)
-                    fila = fila_aux
-                    matriz[i] = fila
-                i += 1 
-        return matriz   
-        
     #Aplica la fórmula del coseno a la lista insertada
-    def formulaCoseno(self, List):
-        usuarios = List
+    def formulaCoseno(self, peliculaPredecir, peliculaReferencia):
+
         #variables para usar
         numerador = 0.0
         denominador_1 = 0.0
         denominador_2 = 0.0
 
         #realiza los sumatorios de la fórmula y los guarda en variables
-        for i in usuarios:
-            numerador += (i[0])*(i[1])
-            denominador_1 += (i[0])**2
-            denominador_2 += (i[1])**2
+        for i in range(len(peliculaPredecir)):
+            numerador += (peliculaReferencia[i])*(peliculaPredecir[i])
+            denominador_1 += (peliculaReferencia[i])**2
+            denominador_2 += (peliculaPredecir[i])**2
 
         #aplica la fórmula del coseno ajustado utilizando los sumatorios previamente calculados.
         coseno_ajustado = numerador/((denominador_1**(1/2))*(denominador_2**(1/2)))
@@ -110,67 +170,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         #devuelve el coeficiente de similitud
         print(coseno_ajustado)
 
-
-    #Calcula el valor medio de todas las valoraciones de un usuario
-    def media_usuario(self, int):
-        user_id = int
-        media = 0.0
-
-        ratings = dbManager.getRatingsUsuario(user_id)
-        
-        for rating in ratings:
-            media+=float(rating[2])
-
-        media = media/len(ratings)
-        media = (format(media,".3f"))
-        return media
-
-    def predecir(self):
-        #Declaración de variables a usar
-        usuarios_similares = []
-        lista_vistas = []
-        aux_vistas = []
-        vista = False
-        
-        #Carga del usuario y pelicula seleccionadas
-        usuario = 1#cargar usuario seleccionado en el combobox
-        pelicula = "Jumanji (1995)"#cargar pelicula seleccionada en el combobox
-
-        #Carga de todos los usuarios
-        usuarios = dbManager.getUsuarios()
-        string_aux = str(usuarios[0]).replace("(","").replace(")","").replace(",","").replace("'","")
-        #Carga de todas la valoraciones y las realizadas por el usuario
-        ratings = dbManager.getRatings()
-        ratings_user = dbManager.getRatingsUsuario(usuario)
-        #print(ratings_user)
-        for i in ratings_user:
-            if str(pelicula) == i[1]:
-                vista = True
-            lista_vistas.append(i[1])
-        lista_vistas.append(pelicula) #guardamos todas las películas que ha visto el usuario 
-        if vista == False:  #Si el usuario no ha visto la película elegida, se guardan los usuarios que han visto 
-                            #las que nuestro usuario ya ha visto además de la seleccionada
-            for user in usuarios:
-                #Se limpia el string para su posterior uso
-                string_aux = str(user).replace("(","").replace(")","").replace(",","").replace("'","")
-                aux_vistas.clear()
-                
-                #Cargamos las valoraciones del usuario indicado en una lista auxiliar
-                ratings_aux = dbManager.getRatingsUsuario(string_aux)
-                for rating_aux in ratings_aux:
-                    aux_vistas.append(rating_aux[1])
-                #Si la lista auxiliar contiene la película elegida, imprime los usuarios que han valorado
-                #esa película.
-                if (pelicula in aux_vistas):
-                    usuarios_similares.append(string_aux)
-            print(usuarios_similares)
-            prediccion = "Prediccion: e"
-        else:
-            prediccion = "Película ya vista, seleccione otra"
-        print(prediccion)
-
-
-        #return prediccion
+        return coseno_ajustado
 
     def cargarUsuarios(self):
         usuarios = dbManager.getUsuarios()

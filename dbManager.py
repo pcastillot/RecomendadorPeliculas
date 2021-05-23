@@ -31,3 +31,11 @@ def getRatingsUsuario(usuario):
     cursor.execute(query, (usuario,))
     ratings = cursor.fetchall()
     return ratings
+
+def getRankUsuarioPelicula(usuario, pelicula):
+    query = '''select ratings.rating from ratings
+                join movies on movies.movieId = ratings.movieId
+                where ratings.userId = ? and movies.title = ?'''
+    cursor.execute(query, (usuario, pelicula))
+    ratings = cursor.fetchall()
+    return ratings
