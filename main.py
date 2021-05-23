@@ -1,8 +1,13 @@
+import pickle
+
+import pandas
+
 from main_ui import *
 import dbManager
 
 class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     peliculas = dict
+    dataframe = pandas.DataFrame
 
     def __init__(self, *args, **kwargs):
         #Inicializacion de la ventana y listeners
@@ -12,10 +17,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         #Cargar datos
         self.cargarUsuarios()
         self.cargarPeliculas()
+        self.dataframe = pickle.load(open("dataframe.p", "rb"))
+
+        print(self.dataframe)
+
 
         #Signals
         self.btnRecomendarTabla.clicked.connect(lambda: self.mostrarRatings(self.cbUsuariosRanking.currentText()))
-        self.btnRecomendarPelicula.clicked.connect(lambda: self.recomendarPelicula(self.cbUsuariosPelicula.currentText()
+        self.btnRecomendarPelicula.clicked.connect(lambda: self.recomendarPelicula(self.cbUsuariosRanking.currentText()
                                                                                    , self.cbPeliculas.currentText()))
 
     # Recomendar y cargar la tabla de ranking
@@ -34,7 +43,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             row += 1
 
         #Pruebas
-        '''
+
         #self.predecir()
         usuarios = [[1,2],[4,5],[1,5],[3,4],[5,5]]
         #self.cosenoAjustado(usuarios)
@@ -42,7 +51,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         ratings = dbManager.getRatings()
         matriz_ajustada = self.ajustarDatos(ratings)
         #print(matriz_ajustada[0])
-        '''
+        
 
 
     # Predecir la puntuación que el usuario le daría a x película
@@ -167,7 +176,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         usuarios = dbManager.getUsuarios()
         for usuario in usuarios:
             self.cbUsuariosRanking.addItem(usuario[0])
-            self.cbUsuariosPelicula.addItem(usuario[0])
 
 
 if __name__ == "__main__":
